@@ -1,0 +1,5 @@
+# Only used if runing this locally, not used for packaging
+loguru
+python-dateutil
+pe_accounting_python_api
+pydantic
