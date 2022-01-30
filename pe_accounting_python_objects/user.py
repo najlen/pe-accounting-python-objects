@@ -16,6 +16,7 @@ class PeCredentials(BaseModel):
     company_id: str
     api_access_token: str
 
+
 class EmploymentContract(BaseModel):
     class Config:
         extra = "allow"
@@ -26,6 +27,8 @@ class EmploymentContract(BaseModel):
     employment_start_date: date = Field(..., alias="employment-start-date")
     manager_user: dict = Field(None, alias="manager-user")
     monthly_salary_start_date: date = Field(None, alias="monthly-salary-start-date")
+    vacation_entitlements: dict = Field(None, alias="vacation-entitlements")
+    zip_code: str = Field(None, alias="zip-code")
 
 
 class PeUser(BaseModel):
@@ -35,10 +38,9 @@ class PeUser(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    
     _pe_rest_client: Optional[PeRestClient] = None
     pe_credentials: Optional[PeCredentials] = None
-    
+
     index: int = 1
     active: bool
     contract: EmploymentContract
@@ -57,7 +59,6 @@ class PeUser(BaseModel):
         if not cls._pe_rest_client and cls.pe_credentials:
             cls._pe_rest_client = PeRestClient(**cls.pe_credentials.dict())
         return cls._pe_rest_client
-  
 
     @property
     def manager(self):
@@ -89,6 +90,28 @@ class PeUser(BaseModel):
     @property
     def latest_salary_revision(self) -> date:
         return self.contract.monthly_salary_start_date
+
+    @property
+    def vacation_entitlement(self) -> List[dict]:
+        return self.contract.vacation_entitlements["vacation-entitlements"]
+
+    @property
+    def future_vacation_entitlement_change(self) -> Optional[date]:
+        """Is there any configured future vacation entitlement change."""
+        last = self.vacation_entitlement[-1]
+        change_date = date.fromisoformat(last["start-date"])
+        if date.today() < change_date:
+            return change_date
+        return None
+
+    @property
+    def postaladdress(self) -> str:
+        address = f"{self.contract.address2}, {self.contract.zip_code}, {self.contract.state}"
+        return address
+
+    @property
+    def phone_nr(self) -> str:
+        return self.contract.phone
 
     def __str__(self):
         return f"{self.name} ({self.email})"
@@ -141,13 +164,15 @@ class PeUser(BaseModel):
             item.index = i
             i += 1
 
+
 if __name__ == "__main__":
     import os
     from pprint import pprint
+
     credentials = PeCredentials(company_id=os.getenv("COMPANY"), api_access_token=os.getenv("API"))
     PeUser.pe_credentials = credentials
+
     for user in PeUser.all_users():
         print()
         print(user.name)
-        pprint(user.latest_salary_revision)
-        # pprint(user.dict())
+        pprint(user.phone_nr)
