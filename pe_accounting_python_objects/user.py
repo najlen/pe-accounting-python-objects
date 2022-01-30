@@ -24,11 +24,14 @@ class EmploymentContract(BaseModel):
     user: dict
     ssn: str
     monthly_salary: int = Field(..., alias="monthly-salary")
-    employment_start_date: date = Field(..., alias="employment-start-date")
-    manager_user: dict = Field(None, alias="manager-user")
-    monthly_salary_start_date: date = Field(None, alias="monthly-salary-start-date")
-    vacation_entitlements: dict = Field(None, alias="vacation-entitlements")
-    zip_code: str = Field(None, alias="zip-code")
+    employment_start_date: Optional[date] = Field(..., alias="employment-start-date")
+    manager_user: Optional[dict] = Field(None, alias="manager-user")
+    monthly_salary_start_date: Optional[date] = Field(None, alias="monthly-salary-start-date")
+    vacation_entitlements: Optional[dict] = Field(None, alias="vacation-entitlements")
+    zip_code: Optional[str] = Field(None, alias="zip-code")
+    address2: Optional[str] = None
+    state: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class PeUser(BaseModel):
@@ -70,38 +73,41 @@ class PeUser(BaseModel):
         delta = relativedelta(date.today(), self.contract.employment_start_date)
         return f"{delta.years} år, {delta.months} mån"
 
-    @property
-    def days_to_birthday(self) -> int:
-        return (self.next_birthday - date.today()).days
+    def days_to_birthday(self, from_date=date.today()) -> int:
+        return (self.next_birthday(from_date=from_date) - from_date).days
 
-    @property
-    def next_birthday(self) -> date:
-        now = date.today()
-        next_birthday = datetime.strptime(self.contract.ssn.split("-")[0], "%Y%m%d").replace(year=now.year).date()
-        days_remaining = (next_birthday - now).days
+    def next_birthday(self, from_date=date.today()) -> date:
+        next_birthday = datetime.strptime(self.contract.ssn.split("-")[0], "%Y%m%d").replace(year=from_date.year).date()
+        days_remaining = (next_birthday - from_date).days
         if days_remaining < 0:
-            next_birthday = next_birthday.replace(year=now.year + 1)
+            next_birthday = next_birthday.replace(year=from_date.year + 1)
         return next_birthday
 
-    @property
-    def years_next_birthday(self) -> int:
-        return self.next_birthday.year - datetime.strptime(self.contract.ssn.split("-")[0], "%Y%m%d").year
+    def years_next_birthday(self, from_date: date = date.today()) -> int:
+        return self.next_birthday().year - datetime.strptime(self.contract.ssn.split("-")[0], "%Y%m%d").year
 
     @property
-    def latest_salary_revision(self) -> date:
+    def latest_salary_revision(self) -> Optional[date]:
         return self.contract.monthly_salary_start_date
 
     @property
-    def vacation_entitlement(self) -> List[dict]:
-        return self.contract.vacation_entitlements["vacation-entitlements"]
+    def vacation_entitlement(self) -> Optional[List[dict]]:
+        if (
+            self.contract
+            and self.contract.vacation_entitlements
+            and self.contract.vacation_entitlements.get("vacation-entitlements")
+        ):
+            return self.contract.vacation_entitlements["vacation-entitlements"]
+        return None
 
     @property
     def future_vacation_entitlement_change(self) -> Optional[date]:
         """Is there any configured future vacation entitlement change."""
-        last = self.vacation_entitlement[-1]
-        change_date = date.fromisoformat(last["start-date"])
-        if date.today() < change_date:
-            return change_date
+        if self.vacation_entitlement:
+            last = self.vacation_entitlement[-1]
+            change_date = date.fromisoformat(last["start-date"])
+            if date.today() < change_date:
+                return change_date
         return None
 
     @property
@@ -110,7 +116,7 @@ class PeUser(BaseModel):
         return address
 
     @property
-    def phone_nr(self) -> str:
+    def phone_nr(self) -> Optional[str]:
         return self.contract.phone
 
     def __str__(self):
@@ -147,14 +153,10 @@ class PeUser(BaseModel):
                 user["contract"] = contracts_dict[user["id"]]
                 u = cls(**user)
                 users.append(u)
-                logger.debug(f"User created {u.name}")
-            else:
-                pass
-                logger.warning(f"User withough employment contract {user['name']}")
 
         users = sorted(users, key=lambda user: (getattr(user.contract, sort_key), user.name))
         cls.add_index(users)
-        cls.users_dict: dict[int, User] = {user.id: user for user in users}
+        cls.users_dict: dict[int, PeUser] = {user.id: user for user in users}
         return users
 
     @staticmethod
@@ -166,6 +168,7 @@ class PeUser(BaseModel):
 
 
 if __name__ == "__main__":
+    """Local testing"""
     import os
     from pprint import pprint
 
