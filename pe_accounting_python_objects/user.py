@@ -130,7 +130,7 @@ class PeUser(BaseModel):
             return None
 
     @property
-    def notes(slef) -> Optinal[str]:
+    def notes(self) -> Optinal[str]:
         """Raw data from the `notes` field in a employee contract."""
         return user.contract.notes
 
@@ -191,4 +191,4 @@ if __name__ == "__main__":
     PeUser.pe_credentials = credentials
 
     for user in PeUser.all_users():
-        print(user.name)
+        print(user.yaml_notes)
