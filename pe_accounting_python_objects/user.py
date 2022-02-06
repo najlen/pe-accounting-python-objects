@@ -3,9 +3,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime
+from optparse import Option
 from pprint import pprint
-from typing import List, Optional
+from typing import List, Optional, Union
 
+import yaml
 from dateutil.relativedelta import relativedelta
 from loguru import logger
 from pe_accounting_python_api import PeRestClient
@@ -119,6 +121,19 @@ class PeUser(BaseModel):
     def phone_nr(self) -> Optional[str]:
         return self.contract.phone
 
+    @property
+    def yaml_notes(self) -> Optional[Union[dict, list]]:
+        """If yaml is kept in the Notes for a contract, parse and return dict."""
+        try:
+            return yaml.safe_load(user.contract.notes) if user.contract.notes else None
+        except:
+            return None
+
+    @property
+    def notes(slef) -> Optinal[str]:
+        """Raw data from the `notes` field in a employee contract."""
+        return user.contract.notes
+
     def __str__(self):
         return f"{self.name} ({self.email})"
 
@@ -176,6 +191,4 @@ if __name__ == "__main__":
     PeUser.pe_credentials = credentials
 
     for user in PeUser.all_users():
-        print()
         print(user.name)
-        pprint(user.phone_nr)
