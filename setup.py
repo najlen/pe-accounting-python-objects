@@ -10,7 +10,7 @@ README = (HERE / "README.md").read_text()
 # This call to setup() does all the work
 setup(
     name="pe-accounting-python-objects",
-    version="0.0.13",
+    version="0.0.14",
     description="API objects for https://www.accounting.pe/sv/",
     long_description=README,
     long_description_content_type="text/markdown",
