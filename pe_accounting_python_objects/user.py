@@ -125,14 +125,14 @@ class PeUser(BaseModel):
     def yaml_notes(self) -> Optional[Union[dict, list]]:
         """If yaml is kept in the Notes for a contract, parse and return dict."""
         try:
-            return yaml.safe_load(user.contract.notes) if user.contract.notes else None
+            return yaml.safe_load(self.contract.notes) if self.contract.notes else None
         except:
             return None
 
     @property
-    def notes(self) -> Optinal[str]:
+    def notes(self) -> Optional[str]:
         """Raw data from the `notes` field in a employee contract."""
-        return user.contract.notes
+        return self.contract.notes
 
     def __str__(self):
         return f"{self.name} ({self.email})"
@@ -191,4 +191,4 @@ if __name__ == "__main__":
     PeUser.pe_credentials = credentials
 
     for user in PeUser.all_users():
-        print(user.yaml_notes)
+        print(f"{user.name} {user.notes}")
